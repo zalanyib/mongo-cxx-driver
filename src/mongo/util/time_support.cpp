@@ -29,7 +29,8 @@
 #include "mongo/platform/cstdint.h"
 #include "mongo/util/assert_util.h"
 
-#ifdef _WIN32
+#if defined(_WIN32)
+#include <time.h>
 #include <boost/date_time/filetime_functions.hpp>
 #include <boost/thread/mutex.hpp>
 #include "mongo/util/timer.h"
@@ -71,7 +72,7 @@ namespace mongo {
 
     std::string time_t_to_String(time_t t) {
         char buf[64];
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
         ctime_s(buf, sizeof(buf), &t);
 #else
         ctime_r(&t, buf);
@@ -82,7 +83,7 @@ namespace mongo {
 
     std::string time_t_to_String_short(time_t t) {
         char buf[64];
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
         ctime_s(buf, sizeof(buf), &t);
 #else
         ctime_r(&t, buf);
@@ -140,7 +141,7 @@ namespace {
         if (local) {
             static const int localTzSubstrLen = 5;
             dassert(bufRemaining >= localTzSubstrLen + 1);
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
             // NOTE(schwerin): The value stored by _get_timezone is the value one adds to local time
             // to get UTC.  This is opposite of the ISO-8601 meaning of the timezone offset.
             // NOTE(schwerin): Microsoft's timezone code always assumes US rules for daylight
@@ -175,7 +176,7 @@ namespace {
         static const size_t ctimeSubstrLen = 19;
         static const size_t millisSubstrLen = 4;
         time_t t = date.toTimeT();
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
         ctime_s(result->data, sizeof(result->data), &t);
 #else
         ctime_r(&t, result->data);
@@ -672,7 +673,7 @@ namespace {
 
     void Date_t::toTm(tm* buf) {
         time_t dtime = toTimeT();
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
         gmtime_s(buf, &dtime);
 #else
         gmtime_r(&dtime, buf);
@@ -712,7 +713,7 @@ namespace {
         return true;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__)
     void sleepsecs(int s) {
         Sleep(s*1000);
     }

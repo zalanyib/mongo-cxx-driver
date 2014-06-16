@@ -24,7 +24,9 @@
 
 namespace mongo {
 
+#ifndef __MINGW32__
     BOOST_STATIC_ASSERT(sizeof(NativeProcessId) == sizeof(uint32_t));
+#endif
 
     namespace {
 #ifdef _WIN32

@@ -163,9 +163,11 @@ namespace mongo {
 
     // these are so that if you use one of them compilation will fail
     char *asctime(const struct tm *tm);
+#ifndef __MINGW32__
     char *ctime(const time_t *timep);
     struct tm *gmtime(const time_t *timep);
     struct tm *localtime(const time_t *timep);
+#endif
 
 #if (BOOST_VERSION >= 105000)
 #define MONGO_BOOST_TIME_UTC boost::TIME_UTC_

@@ -74,7 +74,7 @@ namespace mongo {
 
     /* like toWideString but UNICODE macro sensitive */
 # if !defined(_UNICODE)
-#error temp error 
+//#error temp error 
     inline std::string toNativeString(const char *s) { return s; }
 # else
     inline std::wstring toNativeString(const char *s) { return toWideString(s); }

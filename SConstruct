@@ -35,6 +35,7 @@ windows = False
 freebsd = False
 openbsd = False
 solaris = False
+mingw = False
 
 if "darwin" == platform:
     darwin = True
@@ -52,8 +53,6 @@ elif "win32" == platform:
     windows = True
 else:
     print( "No special config for [" + platform + "] which probably means it won't work" )
-
-nix = not windows
 
 # --- options ----
 use_clang = False
@@ -246,9 +245,17 @@ add_option('cache-dir',
            "Specify the directory to use for caching objects if --cache is in use",
            1, False, default="$BUILD_DIR/scons/cache")
 
+add_option('mingw', "MinGW compilation", 0, True)
+
 # don't run configure if user calls --help
 if GetOption('help'):
     Return()
+
+if has_option("mingw"):
+    mingw = True
+    windows = False
+
+nix = not windows
 
 # --- environment setup ---
 buildDir = get_option('build-dir').rstrip('/')
@@ -310,13 +317,18 @@ if len(mongoclientVersionComponents) != 3:
     print("Error: client version most be of the form w.x.y or w.x.y-string")
     Exit(1)
 
+if not mingw:
+    toollist = ["default", "unittest", "integration_test", "textfile"]
+else:
+    toollist = ["unittest", "integration_test", "textfile", "mingw"]
+
 env = Environment( BUILD_DIR=buildDir,
                    VARIANT_DIR=variantDir,
                    EXTRAPATH=get_option("extrapath"),
                    MSVS_ARCH=msarch ,
                    PYTHON=buildscripts.utils.find_python(),
                    TARGET_ARCH=msarch ,
-                   tools=["default", "unittest", "integration_test", "textfile"],
+                   tools=toollist,
                    PYSYSPLATFORM=os.sys.platform,
                    CONFIGUREDIR=sconsDataDir.Dir('sconf_temp'),
                    CONFIGURELOG=sconsDataDir.File('config.log'),
@@ -379,7 +391,7 @@ if env['PYSYSPLATFORM'] == 'linux3':
 if 'freebsd' in env['PYSYSPLATFORM']:
     env['PYSYSPLATFORM'] = 'freebsd'
 
-if os.sys.platform == 'win32':
+if os.sys.platform == 'win32' and not mingw:
     env['OS_FAMILY'] = 'win'
 else:
     env['OS_FAMILY'] = 'posix'
@@ -625,14 +637,16 @@ elif windows:
 if nix:
 
     # -Winvalid-pch Warn if a precompiled header (see Precompiled Headers) is found in the search path but can't be used.
-    env.Append( CCFLAGS=["-fPIC",
-                         "-fno-strict-aliasing",
-                         "-ggdb",
-                         "-pthread",
-                         "-Wall",
-                         "-Wsign-compare",
-                         "-Wno-unknown-pragmas",
-                         "-Winvalid-pch"] )
+    cflags = ["-fno-strict-aliasing",
+              "-ggdb",
+              "-pthread",
+              "-Wall",
+              "-Wsign-compare",
+              "-Wno-unknown-pragmas",
+              "-Winvalid-pch"]
+    if not mingw:
+        cflags.append("-fPIC")
+    env.Append( CCFLAGS=cflags )
     # env.Append( " -Wconversion" ) TODO: this doesn't really work yet
     if linux or darwin:
         env.Append( CCFLAGS=["-pipe"] )
@@ -651,11 +665,11 @@ if nix:
     if darwin:
         env.Append( LINKFLAGS=["-Wl,-bind_at_load"] )
         env.Append( SHLINKFLAGS=["-Wl,-bind_at_load"] )
-    else:
+    elif not mingw:
         env.Append( LINKFLAGS=["-Wl,-z,now"] )
         env.Append( SHLINKFLAGS=["-Wl,-z,now"] )
 
-    if not darwin:
+    if not darwin and not mingw:
         env.Append( LINKFLAGS=["-rdynamic"] )
 
     env.Append( LIBS=[] )
@@ -737,6 +751,7 @@ def doConfigure(myenv):
     toolchain_gcc = "GCC"
     toolchain_clang = "clang"
     toolchain_msvc = "MSVC"
+    toolchain_mingw = "MinGW"
 
     def CheckForToolchain(context, toolchain, lang_name, compiler_var, source_suffix):
         test_bodies = {
@@ -759,6 +774,12 @@ def doConfigure(myenv):
                 #error
                 #endif
                 """),
+            toolchain_mingw : (
+                """
+				#if !defined(__MINGW32__)
+				#error
+				#endif
+				"""),
         }
         print_tuple = (lang_name, context.env[compiler_var], toolchain)
         context.Message('Checking if %s compiler "%s" is %s... ' % print_tuple)
@@ -783,6 +804,8 @@ def doConfigure(myenv):
 
     if windows:
         toolchain_search_sequence = [toolchain_msvc]
+    elif mingw:
+        toolchain_search_sequence = [toolchain_mingw]
     else:
         toolchain_search_sequence = [toolchain_gcc, toolchain_clang]
 
@@ -884,7 +907,8 @@ def doConfigure(myenv):
         # For GCC, we don't need anything since bad flags are already errors, but
         # adding -Werror won't hurt. For clang, bad flags are only warnings, so we need -Werror
         # to make them real errors.
-        cloned.Append(CCFLAGS=['-Werror'])
+        if not mingw:
+            cloned.Append(CCFLAGS=['-Werror'])
         conf = Configure(cloned, help=False, custom_tests = {
                 'CheckFlag' : lambda(ctx) : CheckFlagTest(ctx, tool, extension, flag)
         })

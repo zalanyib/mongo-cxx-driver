@@ -82,6 +82,7 @@
 #error "Expected WINVER to have been defined and to equal _WIN32_WINNT"
 #endif
 
+#ifndef __MINGW32__
 #if defined(_WIN64)
 #if !defined(NTDDI_WS03SP2) || (NTDDI_VERSION < NTDDI_WS03SP2)
 #error "64 bit mongo does not support Windows versions older than Windows Server 2003 SP 2"
@@ -89,5 +90,6 @@
 #else
 #if !defined(NTDDI_WINXPSP3) || (NTDDI_VERSION < NTDDI_WINXPSP3)
 #error "32 bit mongo does not support Windows versions older than XP Service Pack 3"
+#endif
 #endif
 #endif

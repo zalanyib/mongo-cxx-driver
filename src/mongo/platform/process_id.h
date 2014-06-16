@@ -27,7 +27,7 @@
 
 namespace mongo {
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
     typedef DWORD NativeProcessId;
 #else
     typedef pid_t NativeProcessId;

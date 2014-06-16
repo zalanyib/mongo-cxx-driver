@@ -35,6 +35,10 @@
 
 #endif // not _WIN32
 
+#ifdef __MINGW32__
+#include <winsock2.h>
+#endif
+
 #include <boost/scoped_ptr.hpp>
 #include <string>
 #include <utility>
